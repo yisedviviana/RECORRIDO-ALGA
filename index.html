@@ -1,3 +1,4 @@
+HTML
 <!DOCTYPE html>
 <html lang="es">
 <head>
@@ -153,6 +154,7 @@
       align-items: center;
       margin-top: 2rem;
       gap: 1rem;
+      flex-wrap: wrap;
     }
 
     button {
@@ -331,12 +333,15 @@
   <script>
     /* =========================================================================
        ZONA EDITABLE POR EL DOCENTE (CONFIGURACIÓN GENÉRICA)
-       Cualquier área curricular solo edita este bloque sin modificar el motor.
        ========================================================================= */
     const CONFIG = {
       projectTitle: "ALGA: Del Feedback a la Acción",
       discipline: "Cualquier Asignatura / Transversal",
-      canvaFormUrl: "", // URL opcional de formulario para recolección oficial de evidencias
+      
+      // Pega aquí la URL de Google Apps Script (si la dejas vacía, solo guarda en localStorage)
+      webhookUrl: "", 
+
+      canvaFormUrl: "", // URL opcional de formulario complementario
 
       // Banco de expresiones para enriquecer el léxico reflexivo
       lexicalBank: [
@@ -350,8 +355,8 @@
 
       // Reto 1: Clasificación de feedback recibido
       reto1Zones: [
-        { id: "forma", label: "Aspectos de Forma / Estructura", desc: "Redacción, ortografía, formato, diseño visual, orden" },
-        { id: "fondo", label: "Aspectos de Contenido / Criterios", desc: "Argumentación, validez de datos, análisis conceptual, cumplimiento de rúbrica" },
+        { id: "forma", label: "Aspectos de Forma / Estructura", desc: "Redacción, formato, orden, presentación visual" },
+        { id: "fondo", label: "Aspectos de Contenido / Criterios", desc: "Argumentación, validez conceptual, justificación, cumplimiento de rúbrica" },
         { id: "positivo", label: "Fortalezas Reconocidas", desc: "Aciertos que debo conservar y potenciar en la entrega final" }
       ],
 
@@ -380,15 +385,15 @@
         {
           statement: "Al valorar el trabajo de un compañero/a, lo más constructivo es:",
           options: [
-            { text: "Destacar únicamente los errores de redacción ortográfica para no incomodar.", isCorrect: false },
-            { text: "Equilibrar fortalezas alcanzadas con preguntas guía que motiven su profundización.", isCorrect: true }
+            { text: "Destacar únicamente los errores ortográficos o de formato para no incomodar.", isCorrect: false },
+            { text: "Equilibrar fortalezas alcanzadas con preguntas orientadoras que motiven su profundización.", isCorrect: true }
           ]
         }
       ]
     };
 
     /* =========================================================================
-       MOTOR DE NAVEGACIÓN, PERSISTENCIA Y GAMIFICACIÓN
+       MOTOR DE ESTADO Y PERSISTENCIA
        ========================================================================= */
     const STORAGE_KEY = "alga_recorrido_state";
 
@@ -397,9 +402,7 @@
       studentName: "",
       rawFeedback: "",
       feedbackZone: "",
-      actionCommitment: "",
-      userAnswers: {},
-      transferAnswers: {}
+      actionCommitment: ""
     };
 
     function loadState() {
@@ -468,7 +471,7 @@
               <p>Pega o redacta un comentario o sugerencia que hayas recibido en un borrador o entrega de cualquier materia.</p>
 
               <div class="word-bank">
-                <p>Banco de léxico reflexivo (haz clic para insertar):</p>
+                <p>Banco de léxico reflexivo (haz clic para insertar en el texto):</p>
                 <div class="tags">
                   ${CONFIG.lexicalBank.map(tag => `<span class="tag-btn" onclick="insertTag('${tag}')">${tag}</span>`).join('')}
                 </div>
@@ -621,9 +624,10 @@
                 </div>
               ` : ''}
 
-              <div class="btn-row" style="justify-content: center; gap: 1rem;">
-                <button class="btn-secondary" onclick="window.print()">🖨️ Imprimir / Guardar Certificado</button>
-                <button class="btn-secondary" onclick="resetProgress()">Reiniciar Recorrido</button>
+              <div class="btn-row" style="justify-content: center; gap: 0.75rem;">
+                <button class="btn-primary" onclick="descargarEvidencia()">📥 Descargar Resumen (.txt)</button>
+                <button class="btn-secondary" onclick="window.print()">🖨️ Imprimir Certificado</button>
+                <button class="btn-secondary" onclick="resetProgress()">Reiniciar</button>
               </div>
             </div>
           `;
@@ -633,12 +637,12 @@
     }
 
     /* =========================================================================
-       FUNCIONES CONTROLADORAS
+       CONTROLADORES Y MANEJO DE DATOS
        ========================================================================= */
     function startJourney() {
       const name = document.getElementById("studentNameInput").value.trim();
       if (!name) {
-        alert("Por favor ingresa tu nombre para personalizar tu experiencia.");
+        alert("Por favor ingresa tu nombre para comenzar.");
         return;
       }
       state.studentName = name;
@@ -647,12 +651,10 @@
       renderStep();
     }
 
-    // Guarda lo que el estudiante escribe en el textarea en tiempo real
     function updateRawFeedback(value) {
       state.rawFeedback = value;
     }
 
-    // Inserta los conectores léxicos sin borrar el texto existente
     function insertTag(text) {
       const txt = document.getElementById("feedbackInput");
       if (!txt) return;
@@ -661,7 +663,6 @@
       txt.focus();
     }
 
-    // Selecciona la zona visualmente sin recargar la pantalla
     function selectZone(id) {
       state.feedbackZone = id;
       const txt = document.getElementById("feedbackInput");
@@ -716,7 +717,41 @@
       state.actionCommitment = plan;
       state.step = 5;
       saveState();
+
+      // Envío automático a Google Sheets si se configuró webhookUrl
+      if (CONFIG.webhookUrl && CONFIG.webhookUrl.trim().startsWith("http")) {
+        fetch(CONFIG.webhookUrl.trim(), {
+          method: "POST",
+          mode: "no-cors",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            studentName: state.studentName,
+            rawFeedback: state.rawFeedback,
+            feedbackZone: state.feedbackZone,
+            actionCommitment: state.actionCommitment
+          })
+        }).catch(err => console.error("Error al enviar a Google Sheets:", err));
+      }
+
       renderStep();
+    }
+
+    // Genera y descarga el archivo .txt de evidencia individual
+    function descargarEvidencia() {
+      const contenido = `EVIDENCIA ALGA - DEL FEEDBACK A LA ACCIÓN
+--------------------------------------------------
+Fecha: ${new Date().toLocaleString()}
+Estudiante: ${state.studentName}
+Zona Feedback: ${state.feedbackZone}
+Comentario Recibido: ${state.rawFeedback}
+Compromiso / Plan de Acción: ${state.actionCommitment}
+--------------------------------------------------`;
+
+      const blob = new Blob([contenido], { type: "text/plain;charset=utf-8" });
+      const enlace = document.createElement("a");
+      enlace.href = URL.createObjectURL(blob);
+      enlace.download = `Evidencia_ALGA_${(state.studentName || 'Estudiante').replace(/\s+/g, '_')}.txt`;
+      enlace.click();
     }
 
     function nextStep() {
@@ -733,7 +768,7 @@
       }
     }
 
-    // Inicialización al cargar la página
+    // Inicio
     document.getElementById("headerTitle").innerText = CONFIG.projectTitle;
     loadState();
     renderStep();
