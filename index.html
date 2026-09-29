@@ -121,6 +121,17 @@
     h2 { font-size: 1.4rem; margin-bottom: 0.75rem; }
     p { margin-bottom: 1rem; color: #475569; }
 
+    .alga-avatar {
+      display: block;
+      margin: 0.75rem auto 1.25rem;
+      border-radius: 16px;
+      transition: transform 0.3s ease;
+    }
+
+    .alga-avatar:hover {
+      transform: scale(1.05);
+    }
+
     .input-group {
       margin-bottom: 1.25rem;
     }
@@ -304,7 +315,7 @@
       font-size: 2rem;
       font-weight: 700;
       color: #0f172a;
-      margin: 1.5rem 0;
+      margin: 1.2rem 0;
       border-bottom: 2px dashed #94a3b8;
       display: inline-block;
       padding: 0 2rem;
@@ -316,7 +327,7 @@
   <header>
     <div class="header-content">
       <div class="brand">
-        <span>🌱</span>
+        <span></span>
         <span id="headerTitle">ALGA</span>
       </div>
       <div class="progress-track" title="Progreso del recorrido">
@@ -337,12 +348,9 @@
       projectTitle: "ALGA: Del Feedback a la Acción",
       discipline: "Cualquier Asignatura / Transversal",
       
-      // Pega aquí la URL de Google Apps Script (si la dejas vacía, solo guarda en localStorage)
       webhookUrl: "", 
+      canvaFormUrl: "",
 
-      canvaFormUrl: "", // URL opcional de formulario complementario
-
-      // Banco de expresiones para enriquecer el léxico reflexivo
       lexicalBank: [
         "Identifiqué que...",
         "Debo reestructurar...",
@@ -352,14 +360,12 @@
         "Voy a contrastar..."
       ],
 
-      // Reto 1: Clasificación de feedback recibido
       reto1Zones: [
         { id: "forma", label: "Aspectos de Forma / Estructura", desc: "Redacción, formato, orden, presentación visual" },
         { id: "fondo", label: "Aspectos de Contenido / Criterios", desc: "Argumentación, validez conceptual, justificación, cumplimiento de rúbrica" },
         { id: "positivo", label: "Fortalezas Reconocidas", desc: "Aciertos que debo conservar y potenciar en la entrega final" }
       ],
 
-      // Reto 2: Reconocimiento de feedback de calidad
       reto2Questions: [
         {
           question: "¿Cuál de estos comentarios aporta una retroalimentación formativa y accionable?",
@@ -379,7 +385,6 @@
         }
       ],
 
-      // Reto 3: Coevaluación
       reto3Items: [
         {
           statement: "Al valorar el trabajo de un compañero/a, lo más constructivo es:",
@@ -423,10 +428,31 @@
       }
     }
 
-    function triggerConfetti() {
-      if (typeof confetti === 'function') {
-        confetti({ particleCount: 70, spread: 60, origin: { y: 0.6 } });
-      }
+    // Lluvia continua de confeti de izquierda y derecha sobre ALGA
+    function triggerConfettiRain() {
+      if (typeof confetti !== 'function') return;
+
+      const duracion = 3.5 * 1000;
+      const fin = Date.now() + duracion;
+
+      (function frame() {
+        confetti({
+          particleCount: 4,
+          angle: 60,
+          spread: 60,
+          origin: { x: 0.15, y: 0.65 }
+        });
+        confetti({
+          particleCount: 4,
+          angle: 120,
+          spread: 60,
+          origin: { x: 0.85, y: 0.65 }
+        });
+
+        if (Date.now() < fin) {
+          requestAnimationFrame(frame);
+        }
+      }());
     }
 
     const totalSteps = 5;
@@ -448,8 +474,8 @@
             <div class="card">
               <span class="step-badge">Inicio</span>
               <h1>Bienvenido/a a ALGA</h1>
-              <center><img src="ALGA.png" alt="Prototipo ALGA" width="300"></center>
-              <p>¡Hola! Soy ALGA, tu compañero de viaje en el aprendizaje. Me llamo así porque nací de dos colegios increibles de Medellín: I.E. Alvernia, I.E. Gabriel Restrepo Moreno. Hoy vas a comenzar una experiencia diferente. Cada vez que tu profe te deje un feedback, yo apareceré para ayudarte a comprenderlo y convertirlo en una oportunidad de mejora. ¿Estás listo para comenzar? </p>
+              <img src="ALGA.png" alt="ALGA Guía" class="alga-avatar" style="width: 170px;">
+              <p>¡Hola! Soy <strong>ALGA,</strong> tu compañero de viaje en el aprendizaje. Me llamo así porque nací de dos colegios increíbles de Medellín: <strong>I.E. Alvernia e I.E. Gabriel Restrepo Moreno.</strong> Hoy vas a comenzar una experiencia diferente. Cada vez que tu profe te deje un feedback, yo apareceré para ayudarte a comprenderlo y convertirlo en una oportunidad de mejora. ¿Estás listo para comenzar?</p>
               
               <div class="input-group" style="margin-top: 1.5rem;">
                 <label for="studentNameInput">Ingresa tu nombre completo para comenzar:</label>
@@ -506,7 +532,7 @@
               <div class="badge-modal">
                 <div class="badge-icon">🧭</div>
                 <div>
-                  <strong>¡Insignia Desbloqueada: Explorador/a del Eco!</strong>
+                  <strong>¡Insignia Desbloqueada!</strong>
                   <div style="font-size: 0.88rem; color: #b45309;">Has procesado y decodificado tu retroalimentación inicial.</div>
                 </div>
               </div>
@@ -540,7 +566,7 @@
               <div class="badge-modal">
                 <div class="badge-icon">🔍</div>
                 <div>
-                  <strong>¡Insignia Desbloqueada: Analista del Saber!</strong>
+                  <strong>¡Insignia Desbloqueada!</strong>
                   <div style="font-size: 0.88rem; color: #b45309;">Identificas comentarios útiles y orientados a la acción.</div>
                 </div>
               </div>
@@ -595,24 +621,26 @@
           `;
           break;
 
-        case 5: // Cierre y Certificado Final
-          triggerConfetti();
+        case 5: // Cierre y Certificado Final con ALGA y Confeti
+          triggerConfettiRain();
           stepContainer.innerHTML = `
             <div class="card">
               <div class="badge-modal">
                 <div class="badge-icon">🪞</div>
                 <div>
-                  <strong>¡Insignia Desbloqueada: Espejo del Pensamiento!</strong>
+                  <strong>¡Insignia Desbloqueada!</strong>
                   <div style="font-size: 0.88rem; color: #b45309;">Has formulado un plan de acción autónomo.</div>
                 </div>
               </div>
 
               <div class="cert-box">
-                <div style="font-size: 2.5rem; margin-bottom: 0.5rem;">🌟</div>
+                <img src="ALGA.png" alt="ALGA Celebrando" class="alga-avatar" style="width: 150px; margin-bottom: 0.5rem;">
                 <div class="cert-title">CONSTANCIA DE LOGRO FORMATIVO</div>
                 <p style="margin-top: 0.5rem;">Se reconoce que</p>
                 <div class="cert-name">${state.studentName || 'Estudiante'}</div>
-                <p>Ha completado exitosamente el recorrido metodológico de autorregulación y juicio evaluativo <strong>ALGA (Del Feedback a la Acción)</strong>, demostrando capacidad para interpretar comentarios y traducirlos en mejoras verificables.</p>
+                <p style="max-width: 650px; margin: 1rem auto; font-size: 1.05rem;">
+                  ¡Felicitaciones! Has completado con éxito todo el recorrido por <strong>ALGA sobre retroalimentación</strong>, aprendiendo a analizar las recomendaciones recibidas y transformarlas en decisiones de mejora verificables para tu trabajo.
+                </p>
                 <div style="font-size: 0.85rem; color: var(--text-muted); margin-top: 1.5rem;">
                   Distinción alcanzada: <strong>Maestro/a ALGA</strong> • ${new Date().toLocaleDateString()}
                 </div>
@@ -718,7 +746,6 @@
       state.step = 5;
       saveState();
 
-      // Envío automático a Google Sheets si se configuró webhookUrl
       if (CONFIG.webhookUrl && CONFIG.webhookUrl.trim().startsWith("http")) {
         fetch(CONFIG.webhookUrl.trim(), {
           method: "POST",
@@ -736,7 +763,6 @@
       renderStep();
     }
 
-    // Genera y descarga el archivo .txt de evidencia individual
     function descargarEvidencia() {
       const contenido = `EVIDENCIA ALGA - DEL FEEDBACK A LA ACCIÓN
 --------------------------------------------------
@@ -768,7 +794,6 @@ Compromiso / Plan de Acción: ${state.actionCommitment}
       }
     }
 
-    // Inicio
     document.getElementById("headerTitle").innerText = CONFIG.projectTitle;
     loadState();
     renderStep();
